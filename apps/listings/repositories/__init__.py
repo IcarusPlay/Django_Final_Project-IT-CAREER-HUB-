@@ -1,0 +1,1 @@
+from .listing_repository import ListingRepository
