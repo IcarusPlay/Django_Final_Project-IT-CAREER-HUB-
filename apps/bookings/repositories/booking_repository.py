@@ -1,3 +1,4 @@
+from django.db.models import Q
 from apps.bookings.models import Booking
 
 
@@ -33,9 +34,22 @@ class BookingRepository:
 
     @staticmethod
     def has_confirmed_booking(tenant, listing):
-        # проверяем что арендатор реально снимал это жильё
         return Booking.objects.filter(
             tenant=tenant,
             listing=listing,
             status=Booking.CONFIRMED,
         ).exists()
+
+    @staticmethod
+    def has_date_conflict(listing, date_from, date_to, exclude_booking_id=None):
+        # проверяем пересечение дат с уже существующими бронированиями
+        # два отрезка пересекаются если: start1 < end2 AND start2 < end1
+        qs = Booking.objects.filter(
+            listing=listing,
+            status__in=[Booking.PENDING, Booking.CONFIRMED],
+        ).filter(
+            Q(date_from__lt=date_to) & Q(date_to__gt=date_from)
+        )
+        if exclude_booking_id:
+            qs = qs.exclude(id=exclude_booking_id)
+        return qs.exists()

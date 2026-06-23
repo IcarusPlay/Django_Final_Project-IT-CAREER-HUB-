@@ -3,11 +3,6 @@ from apps.listings.choices import ListingStatus
 
 
 class ListingFilter:
-    """
-    Применяет фильтры, поиск и сортировку к queryset объявлений.
-    Написано по примеру из задания.
-    """
-
     def __init__(self, queryset, params):
         self.queryset = queryset
         self.params = params
@@ -20,27 +15,36 @@ class ListingFilter:
         return qs
 
     def add_filters(self, qs):
-        # фильтр по городу
+        # по умолчанию только активные
+        qs = qs.filter(status=ListingStatus.ACTIVE)
+
         city = self.params.get('city')
         if city:
             qs = qs.filter(city__icontains=city)
 
-        # фильтр по району
         district = self.params.get('district')
         if district:
             qs = qs.filter(district__icontains=district)
 
-        # фильтр по типу жилья
         property_type = self.params.get('property_type')
         if property_type:
             qs = qs.filter(property_type=property_type)
 
-        # фильтр по количеству комнат
+        # диапазон комнат
+        rooms_min = self.params.get('rooms_min')
+        if rooms_min:
+            qs = qs.filter(rooms__gte=rooms_min)
+
+        rooms_max = self.params.get('rooms_max')
+        if rooms_max:
+            qs = qs.filter(rooms__lte=rooms_max)
+
+        # точное кол-во комнат (если передали)
         rooms = self.params.get('rooms')
         if rooms:
             qs = qs.filter(rooms=rooms)
 
-        # фильтр по цене
+        # диапазон цены
         price_min = self.params.get('price_min')
         if price_min:
             qs = qs.filter(price_per_night__gte=price_min)
@@ -49,13 +53,9 @@ class ListingFilter:
         if price_max:
             qs = qs.filter(price_per_night__lte=price_max)
 
-        # по умолчанию показываем только активные
-        qs = qs.filter(status=ListingStatus.ACTIVE)
-
         return qs
 
     def add_search(self, qs):
-        # поиск по ключевому слову в title и description
         search = self.params.get('search')
         if search:
             qs = qs.filter(
@@ -65,7 +65,12 @@ class ListingFilter:
 
     def add_sorting(self, qs):
         ordering = self.params.get('ordering', '-created_at')
-        allowed = ['price_per_night', '-price_per_night', 'created_at', '-created_at', 'rooms', '-rooms']
+        allowed = [
+            'price_per_night', '-price_per_night',
+            'created_at', '-created_at',
+            'rooms', '-rooms',
+            'views_count', '-views_count',   # для сортировки по популярности
+        ]
         if ordering in allowed:
             qs = qs.order_by(ordering)
         return qs

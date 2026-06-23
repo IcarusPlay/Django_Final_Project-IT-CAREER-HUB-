@@ -1,3 +1,4 @@
+from datetime import date
 from rest_framework.exceptions import PermissionDenied, NotFound, ValidationError
 from apps.bookings.models import Booking
 from apps.reviews.repositories import ReviewRepository
@@ -12,13 +13,17 @@ class ReviewService:
     def create(author, validated_data):
         booking = validated_data['booking']
 
-        # только арендатор этого бронирования может оставить отзыв
+        # только арендатор этого бронирования
         if booking.tenant != author:
             raise PermissionDenied('Можно оставить отзыв только на своё бронирование')
 
         # бронирование должно быть подтверждённым
         if booking.status != Booking.CONFIRMED:
             raise ValidationError('Отзыв можно оставить только после подтверждённого бронирования')
+
+        # срок проживания должен уже закончиться
+        if booking.date_to > date.today():
+            raise ValidationError('Отзыв можно оставить только после окончания срока проживания')
 
         # один отзыв на одно бронирование
         if ReviewRepository.already_reviewed(booking):

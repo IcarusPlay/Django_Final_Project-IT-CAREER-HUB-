@@ -7,9 +7,9 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 env = environ.Env()
 environ.Env.read_env(BASE_DIR / '.env')
 
-SECRET_KEY = env.str('SECRET_KEY')
-DEBUG = env.bool('DEBUG')
-ALLOWED_HOSTS = env.list('ALLOWED_HOSTS')
+SECRET_KEY = env.str('SECRET_KEY', default='django-insecure-change-me')
+DEBUG = env.bool('DEBUG', default=True)
+ALLOWED_HOSTS = env.list('ALLOWED_HOSTS', default=['localhost', '127.0.0.1'])
 
 
 INSTALLED_APPS = [
@@ -39,7 +39,7 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
-ROOT_URLCONF = 'django_final_project.urls'
+ROOT_URLCONF = 'config.urls'
 
 TEMPLATES = [
     {
@@ -57,20 +57,19 @@ TEMPLATES = [
     },
 ]
 
-WSGI_APPLICATION = 'django_final_project.wsgi.application'
+WSGI_APPLICATION = 'config.wsgi.application'
 
 
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
-        'NAME': env.str('MYSQL_NAME',),
-        'USER': env.str('MYSQL_USER', ),
-        'PASSWORD': env.str('MYSQL_PASSWORD',),
-        'HOST': env.str('MYSQL_HOST',),
-        'PORT': env.str('MYSQL_PORT',),
+        'NAME': env.str('DB_NAME', default='rental_db'),
+        'USER': env.str('DB_USER', default='root'),
+        'PASSWORD': env.str('DB_PASSWORD', default=''),
+        'HOST': env.str('DB_HOST', default='localhost'),
+        'PORT': env.str('DB_PORT', default='3306'),
     }
 }
-
 
 AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},

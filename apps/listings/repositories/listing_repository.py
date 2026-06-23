@@ -1,4 +1,5 @@
-from apps.listings.models import Listing
+from django.db.models import Count
+from apps.listings.models import Listing, ListingView, SearchHistory
 
 
 class ListingRepository:
@@ -38,3 +39,37 @@ class ListingRepository:
             listing.status = ListingStatus.ACTIVE
         listing.save()
         return listing
+
+    @staticmethod
+    def increment_views(listing):
+        # F() выражение — атомарное обновление без race condition
+        from django.db.models import F
+        Listing.objects.filter(id=listing.id).update(views_count=F('views_count') + 1)
+        listing.refresh_from_db()
+        return listing
+
+    @staticmethod
+    def save_view(listing, user):
+        ListingView.objects.create(
+            listing=listing,
+            user=user if user and user.is_authenticated else None
+        )
+
+    @staticmethod
+    def save_search(user, keyword):
+        if user and user.is_authenticated and keyword:
+            SearchHistory.objects.create(user=user, keyword=keyword)
+
+    @staticmethod
+    def get_popular_keywords(limit=10):
+        # топ ключевых слов по кол-ву поисков
+        return (
+            SearchHistory.objects
+            .values('keyword')
+            .annotate(count=Count('id'))
+            .order_by('-count')[:limit]
+        )
+
+    @staticmethod
+    def get_search_history(user):
+        return SearchHistory.objects.filter(user=user)
