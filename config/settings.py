@@ -22,6 +22,7 @@ INSTALLED_APPS = [
 
     'rest_framework',
     'django_filters',
+    'drf_spectacular',       # Swagger
 
     'apps.users',
     'apps.listings',
@@ -78,7 +79,6 @@ AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator'},
 ]
 
-# используем нашу кастомную модель пользователя
 AUTH_USER_MODEL = 'users.User'
 
 LANGUAGE_CODE = 'en-us'
@@ -104,6 +104,16 @@ REST_FRAMEWORK = {
     ],
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.CursorPagination',
     'PAGE_SIZE': 6,
+    'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',  # Swagger
+}
+
+
+# Swagger настройки
+SPECTACULAR_SETTINGS = {
+    'TITLE': 'Rental Housing API',
+    'DESCRIPTION': 'API для платформы аренды жилья — объявления, бронирования, отзывы',
+    'VERSION': '1.0.0',
+    'SERVE_INCLUDE_SCHEMA': False,
 }
 
 
