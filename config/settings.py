@@ -1,4 +1,3 @@
-import os
 from pathlib import Path
 import environ
 
@@ -7,9 +6,9 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 env = environ.Env()
 environ.Env.read_env(BASE_DIR / '.env')
 
-SECRET_KEY = env.str('SECRET_KEY',)
-DEBUG = env.bool('DEBUG',)
-ALLOWED_HOSTS = env.list('ALLOWED_HOSTS',)
+SECRET_KEY = env.str('SECRET_KEY')
+DEBUG = env.bool('DEBUG')
+ALLOWED_HOSTS = env.list('ALLOWED_HOSTS')
 
 
 INSTALLED_APPS = [
@@ -22,7 +21,7 @@ INSTALLED_APPS = [
 
     'rest_framework',
     'django_filters',
-    'drf_spectacular',       # Swagger
+    'drf_spectacular',
 
     'apps.users',
     'apps.listings',
@@ -64,11 +63,11 @@ WSGI_APPLICATION = 'config.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
-        'NAME': env.str('DB_NAME',),
-        'USER': env.str('DB_USER',),
-        'PASSWORD': env.str('DB_PASSWORD',),
-        'HOST': env.str('DB_HOST',),
-        'PORT': env.str('DB_PORT',),
+        'NAME': env.str('DB_NAME'),
+        'USER': env.str('DB_USER'),
+        'PASSWORD': env.str('DB_PASSWORD'),
+        'HOST': env.str('DB_HOST'),
+        'PORT': env.str('DB_PORT'),
     }
 }
 
@@ -104,11 +103,10 @@ REST_FRAMEWORK = {
     ],
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.CursorPagination',
     'PAGE_SIZE': 6,
-    'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',  # Swagger
+    'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
 }
 
 
-# Swagger настройки
 SPECTACULAR_SETTINGS = {
     'TITLE': 'Rental Housing API',
     'DESCRIPTION': 'API для платформы аренды жилья — объявления, бронирования, отзывы',
