@@ -109,8 +109,8 @@ REST_FRAMEWORK = {
 
 SPECTACULAR_SETTINGS = {
     'TITLE': 'Rental Housing API',
-    'DESCRIPTION': 'API для платформы аренды жилья — объявления, бронирования, отзывы',
-    'VERSION': '1.0.0',
+    'DESCRIPTION': 'API for a home rental platform – listings, bookings, reviews',
+    'VERSION': '1.8',
     'SERVE_INCLUDE_SCHEMA': False,
 }
 
