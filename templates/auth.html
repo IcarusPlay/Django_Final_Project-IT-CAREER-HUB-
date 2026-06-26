@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Вход - Livento</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+
+<nav>
+    <a href="/" class="nav-logo">🏠 Livento</a>
+    <div class="nav-links" id="nav-links"></div>
+</nav>
+
+<div class="auth-container">
+    <div class="auth-card">
+        <h2>Добро пожаловать</h2>
+        <p>Войдите или создайте аккаунт</p>
+
+        <div class="auth-tabs">
+            <div class="auth-tab active" id="tab-login" onclick="switchTab('login')">Войти</div>
+            <div class="auth-tab" id="tab-register" onclick="switchTab('register')">Регистрация</div>
+        </div>
+
+        <!-- LOGIN FORM -->
+        <div id="form-login">
+            <div class="form-group">
+                <label>Email</label>
+                <input type="email" id="login-email" placeholder="your@email.com">
+            </div>
+            <div class="form-group">
+                <label>Пароль</label>
+                <input type="password" id="login-password" placeholder="••••••••">
+            </div>
+            <button class="btn btn-primary" style="width:100%; padding:12px" onclick="login()">
+                Войти
+            </button>
+        </div>
+
+        <!-- REGISTER FORM -->
+        <div id="form-register" style="display:none">
+            <div class="form-group">
+                <label>Email</label>
+                <input type="email" id="reg-email" placeholder="your@email.com">
+            </div>
+            <div class="form-group">
+                <label>Имя пользователя</label>
+                <input type="text" id="reg-username" placeholder="username">
+            </div>
+            <div class="form-group">
+                <label>Пароль</label>
+                <input type="password" id="reg-password" placeholder="Минимум 8 символов">
+            </div>
+            <div class="form-group">
+                <label>Телефон (необязательно)</label>
+                <input type="tel" id="reg-phone" placeholder="+49 123 456789">
+            </div>
+            <div class="form-group">
+                <label>Я хочу</label>
+                <select id="reg-role">
+                    <option value="tenant">Снимать жильё (арендатор)</option>
+                    <option value="landlord">Сдавать жильё (арендодатель)</option>
+                </select>
+            </div>
+            <button class="btn btn-primary" style="width:100%; padding:12px" onclick="register()">
+                Создать аккаунт
+            </button>
+        </div>
+    </div>
+</div>
+
+<div id="toast" class="toast"></div>
+
+<script src="/static/js/main.js"></script>
+<script>
+    // если уже залогинен - на главную
+    if (getUser()) location.href = '/';
+
+    updateNav();
+
+    // проверяем ?tab=register в URL
+    const urlTab = new URLSearchParams(location.search).get('tab');
+    if (urlTab === 'register') switchTab('register');
+
+    function switchTab(tab) {
+        document.getElementById('form-login').style.display = tab === 'login' ? 'block' : 'none';
+        document.getElementById('form-register').style.display = tab === 'register' ? 'block' : 'none';
+        document.getElementById('tab-login').classList.toggle('active', tab === 'login');
+        document.getElementById('tab-register').classList.toggle('active', tab === 'register');
+    }
+
+    async function login() {
+        const email = document.getElementById('login-email').value.trim();
+        const password = document.getElementById('login-password').value;
+
+        if (!email || !password) { toast('Заполните все поля', 'error'); return; }
+
+        try {
+            const user = await request(`${API}/auth/login/`, 'POST', { email, password });
+            localStorage.setItem('user', JSON.stringify(user));
+            toast('Вы вошли!', 'success');
+            setTimeout(() => location.href = '/', 800);
+        } catch(e) {
+            const msg = e.non_field_errors?.[0] || e.detail || 'Неверный email или пароль';
+            toast(msg, 'error');
+        }
+    }
+
+    async function register() {
+        const email = document.getElementById('reg-email').value.trim();
+        const username = document.getElementById('reg-username').value.trim();
+        const password = document.getElementById('reg-password').value;
+        const phone = document.getElementById('reg-phone').value.trim();
+        const role = document.getElementById('reg-role').value;
+
+        if (!email || !username || !password) { toast('Заполните обязательные поля', 'error'); return; }
+
+        try {
+            const user = await request(`${API}/auth/register/`, 'POST', {
+                email, username, password, phone, role
+            });
+            localStorage.setItem('user', JSON.stringify(user));
+            toast('Аккаунт создан!', 'success');
+            setTimeout(() => location.href = '/', 800);
+        } catch(e) {
+            const msg = e.email?.[0] || e.username?.[0] || e.password?.[0] || e.detail || 'Ошибка регистрации';
+            toast(msg, 'error');
+        }
+    }
+
+    // Enter для отправки форм
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+            const isLogin = document.getElementById('form-login').style.display !== 'none';
+            isLogin ? login() : register();
+        }
+    });
+</script>
+</body>
+</html>

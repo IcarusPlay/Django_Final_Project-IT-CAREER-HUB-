@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Мои бронирования - Livento</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+
+<nav>
+    <a href="/" class="nav-logo">🏠 Livento</a>
+    <div class="nav-links" id="nav-links"></div>
+</nav>
+
+<div class="container">
+    <h2 class="section-title">Мои бронирования</h2>
+    <div id="bookings-list"></div>
+</div>
+
+<div id="toast" class="toast"></div>
+
+<script src="/static/js/main.js"></script>
+<script>
+    if (!getUser()) { location.href = '/auth/'; }
+    updateNav();
+    loadBookings();
+
+    async function loadBookings() {
+        const list = document.getElementById('bookings-list');
+        list.innerHTML = '<div class="loading">Загружаем бронирования...</div>';
+
+        try {
+            const data = await request(`${API}/bookings/`);
+            const bookings = data.results || data;
+
+            if (!bookings.length) {
+                list.innerHTML = `<div class="empty"><div class="empty-icon">📅</div><p>У вас нет бронирований</p><a href="/" class="btn btn-primary" style="margin-top:16px">Найти жильё</a></div>`;
+                return;
+            }
+
+            const statusColors = {
+                pending: '#f39c12',
+                confirmed: '#27ae60',
+                cancelled: '#95a5a6',
+                rejected: '#0d9488',
+            };
+
+            const statusLabels = {
+                pending: 'Ожидает',
+                confirmed: 'Подтверждено',
+                cancelled: 'Отменено',
+                rejected: 'Отклонено',
+            };
+
+            list.innerHTML = bookings.map(b => `
+                <div style="background:#fff; border-radius:12px; padding:20px; margin-bottom:16px; box-shadow:0 1px 4px rgba(0,0,0,0.08); display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
+                    <div>
+                        <div style="font-weight:600; font-size:16px; margin-bottom:4px;">
+                            <a href="/listing/?id=${b.listing}" style="color:#333; text-decoration:none;">Объявление #${b.listing}</a>
+                        </div>
+                        <div style="font-size:13px; color:#888;">
+                            📅 ${b.date_from} → ${b.date_to}
+                        </div>
+                        <div style="font-size:13px; color:#888; margin-top:2px;">
+                            💰 Итого: €${b.total_price}
+                        </div>
+                    </div>
+                    <div style="display:flex; align-items:center; gap:12px;">
+                        <span style="background:${statusColors[b.status]}22; color:${statusColors[b.status]}; padding:4px 12px; border-radius:20px; font-size:13px; font-weight:500;">
+                            ${statusLabels[b.status] || b.status}
+                        </span>
+                        ${b.status === 'pending' ? `
+                            <button class="btn btn-secondary" style="font-size:13px; padding:6px 14px" onclick="cancelBooking(${b.id})">
+                                Отменить
+                            </button>
+                        ` : ''}
+                    </div>
+                </div>
+            `).join('');
+
+        } catch(e) {
+            list.innerHTML = '<div class="empty"><div class="empty-icon">⚠️</div><p>Не удалось загрузить бронирования</p></div>';
+        }
+    }
+
+    async function cancelBooking(id) {
+        if (!confirm('Отменить бронирование?')) return;
+        try {
+            await request(`${API}/bookings/${id}/cancel/`, 'POST');
+            toast('Бронирование отменено', 'success');
+            loadBookings();
+        } catch(e) {
+            toast(e.detail || e.error || 'Ошибка', 'error');
+        }
+    }
+</script>
+</body>
+</html>

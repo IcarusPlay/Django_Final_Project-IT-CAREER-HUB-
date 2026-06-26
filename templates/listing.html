@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Объявление - Livento</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+
+<nav>
+    <a href="/" class="nav-logo">🏠 Livento</a>
+    <div class="nav-links" id="nav-links"></div>
+</nav>
+
+<div class="container">
+    <a href="/" class="back-link">← Назад к списку</a>
+    <div id="content"><div class="loading">Загружаем...</div></div>
+</div>
+
+<div id="toast" class="toast"></div>
+
+<script src="/static/js/main.js"></script>
+<script>
+    updateNav();
+
+    const params = new URLSearchParams(location.search);
+    const listingId = params.get('id');
+
+    if (!listingId) location.href = '/';
+
+    async function loadListing() {
+        try {
+            const l = await request(`${API}/listings/${listingId}/`);
+            document.title = `${l.title} - RentHub`;
+
+            // считаем среднюю оценку из отзывов
+            let avgRating = '';
+            try {
+                const reviewsData = await request(`${API}/reviews/${listingId}/reviews/`);
+                const reviews = reviewsData.results || reviewsData;
+                if (reviews.length) {
+                    const avg = reviews.reduce((s, r) => s + r.rating, 0) / reviews.length;
+                    avgRating = `★ ${avg.toFixed(1)} (${reviews.length} отзывов)`;
+                }
+            } catch(e) {}
+
+            document.getElementById('content').innerHTML = `
+                <div class="detail-grid">
+                    <div>
+                        <div class="detail-img">${propertyIcon(l.property_type)}</div>
+                        <div class="detail-title">${l.title}</div>
+                        <div class="detail-location">
+                            📍 ${l.city}${l.district ? ', ' + l.district : ''}
+                            ${l.address ? ' · ' + l.address : ''}
+                            ${avgRating ? ' · ' + avgRating : ''}
+                        </div>
+
+                        <div class="detail-stats">
+                            <div class="stat">
+                                <div class="stat-value">${l.rooms}</div>
+                                <div class="stat-label">комнат</div>
+                            </div>
+                            <div class="stat">
+                                <div class="stat-value">€${l.price_per_night}</div>
+                                <div class="stat-label">за ночь</div>
+                            </div>
+                            <div class="stat">
+                                <div class="stat-value">${l.views_count || 0}</div>
+                                <div class="stat-label">просмотров</div>
+                            </div>
+                        </div>
+
+                        <p class="detail-description">${l.description}</p>
+
+                        <div style="display:flex; gap:8px; margin-bottom:24px;">
+                            <span class="badge badge-type">${l.property_type}</span>
+                            <span class="badge">👤 ${l.owner?.username || 'Арендодатель'}</span>
+                        </div>
+
+                        <div class="reviews-section" id="reviews-section">
+                            <h3 style="font-size:18px; margin-bottom:16px;">Отзывы</h3>
+                            <div id="reviews-list"><div class="loading">Загружаем отзывы...</div></div>
+                        </div>
+                    </div>
+
+                    <div>
+                        <div class="booking-card">
+                            <h3>Забронировать</h3>
+                            <div class="price">€${l.price_per_night} <span>/ ночь</span></div>
+
+                            <div class="form-group">
+                                <label>Дата заезда</label>
+                                <input type="date" id="date-from" onchange="calcTotal()">
+                            </div>
+                            <div class="form-group">
+                                <label>Дата выезда</label>
+                                <input type="date" id="date-to" onchange="calcTotal()">
+                            </div>
+
+                            <div class="total-price" id="total-block" style="display:none">
+                                <span id="nights-label">0 ночей</span>
+                                <strong id="total-label">€0</strong>
+                            </div>
+
+                            <button class="btn btn-primary" style="width:100%" onclick="book()">
+                                Забронировать
+                            </button>
+
+                            <p style="text-align:center; font-size:12px; color:#aaa; margin-top:12px;">
+                                Оплата при заезде
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            loadReviews();
+            setMinDates();
+            window._listing = l;
+
+        } catch(e) {
+            document.getElementById('content').innerHTML = '<div class="empty"><div class="empty-icon">⚠️</div><p>Объявление не найдено</p></div>';
+        }
+    }
+
+    async function loadReviews() {
+        try {
+            const data = await request(`${API}/reviews/${listingId}/reviews/`);
+            const reviews = data.results || data;
+            const list = document.getElementById('reviews-list');
+
+            if (!reviews.length) {
+                list.innerHTML = '<p style="color:#888; font-size:14px;">Отзывов пока нет</p>';
+                return;
+            }
+
+            list.innerHTML = reviews.map(r => `
+                <div class="review-card">
+                    <div class="review-header">
+                        <span class="review-author">${r.author_email?.split('@')[0] || 'Пользователь'}</span>
+                        <span class="stars">${stars(r.rating)}</span>
+                    </div>
+                    ${r.comment ? `<p class="review-text">${r.comment}</p>` : ''}
+                </div>
+            `).join('');
+        } catch(e) {}
+    }
+
+    function setMinDates() {
+        const today = new Date().toISOString().split('T')[0];
+        const df = document.getElementById('date-from');
+        const dt = document.getElementById('date-to');
+        if (df) df.min = today;
+        if (dt) dt.min = today;
+    }
+
+    function calcTotal() {
+        const df = document.getElementById('date-from')?.value;
+        const dt = document.getElementById('date-to')?.value;
+        const block = document.getElementById('total-block');
+
+        if (!df || !dt || !window._listing) { block.style.display = 'none'; return; }
+
+        const days = Math.round((new Date(dt) - new Date(df)) / 86400000);
+        if (days <= 0) { block.style.display = 'none'; return; }
+
+        const total = days * parseFloat(window._listing.price_per_night);
+        block.style.display = 'flex';
+        document.getElementById('nights-label').textContent = `${days} ночей`;
+        document.getElementById('total-label').textContent = `€${total.toFixed(2)}`;
+    }
+
+    async function book() {
+        const user = getUser();
+        if (!user) {
+            toast('Войдите чтобы забронировать', 'error');
+            setTimeout(() => location.href = '/auth/', 1500);
+            return;
+        }
+
+        if (user.role !== 'tenant') {
+            toast('Только арендаторы могут бронировать', 'error');
+            return;
+        }
+
+        const dateFrom = document.getElementById('date-from')?.value;
+        const dateTo = document.getElementById('date-to')?.value;
+
+        if (!dateFrom || !dateTo) {
+            toast('Выберите даты', 'error');
+            return;
+        }
+
+        try {
+            await request(`${API}/bookings/`, 'POST', {
+                listing: listingId,
+                date_from: dateFrom,
+                date_to: dateTo,
+            });
+            toast('Бронирование создано! Ожидайте подтверждения.', 'success');
+        } catch(e) {
+            const msg = e.non_field_errors?.[0] || e.detail || 'Ошибка при бронировании';
+            toast(msg, 'error');
+        }
+    }
+
+    loadListing();
+</script>
+</body>
+</html>
