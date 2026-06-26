@@ -110,7 +110,7 @@ REST_FRAMEWORK = {
 SPECTACULAR_SETTINGS = {
     'TITLE': 'Rental Housing API',
     'DESCRIPTION': 'API for a home rental platform – listings, bookings, reviews',
-    'VERSION': '1.8',
+    'VERSION': '1.9',
     'SERVE_INCLUDE_SCHEMA': False,
 }
 
