@@ -1,4 +1,4 @@
-# Django Final Project - Rental Housing API
+# Django Final Project - Livento API
 
 Backend-приложение для платформы аренды жилья. Позволяет арендодателям размещать объявления, а арендаторам - искать жильё, бронировать его и оставлять отзывы.
 
