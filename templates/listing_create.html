@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Новое объявление - Livento</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+
+<nav>
+    <a href="/" class="nav-logo">🏠 Livento</a>
+    <div class="nav-links" id="nav-links"></div>
+</nav>
+
+<div class="container" style="max-width: 600px;">
+    <a href="/listings/" class="back-link">← Назад к списку</a>
+
+    <div class="auth-card">
+        <h2>Новое объявление</h2>
+        <p>Заполните информацию о вашем жилье</p>
+
+        <div class="form-group">
+            <label>Название</label>
+            <input type="text" id="f-title" placeholder="Уютная квартира в центре">
+        </div>
+
+        <div class="form-group">
+            <label>Описание</label>
+            <input type="text" id="f-description" placeholder="Светлая квартира с видом на парк">
+        </div>
+
+        <div class="form-group">
+            <label>Город</label>
+            <input type="text" id="f-city" placeholder="Berlin">
+        </div>
+
+        <div class="form-group">
+            <label>Район (необязательно)</label>
+            <input type="text" id="f-district" placeholder="Mitte">
+        </div>
+
+        <div class="form-group">
+            <label>Адрес (необязательно)</label>
+            <input type="text" id="f-address" placeholder="Musterstraße 1">
+        </div>
+
+        <div class="form-group">
+            <label>Тип жилья</label>
+            <select id="f-type">
+                <option value="apartment">Квартира</option>
+                <option value="house">Дом</option>
+                <option value="room">Комната</option>
+                <option value="studio">Студия</option>
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label>Количество комнат</label>
+            <input type="number" id="f-rooms" min="1" placeholder="2">
+        </div>
+
+        <div class="form-group">
+            <label>Цена за ночь (€)</label>
+            <input type="number" id="f-price" min="1" step="0.01" placeholder="85">
+        </div>
+
+        <button class="btn btn-primary" style="width:100%; padding:12px" onclick="createListing()">
+            Создать объявление
+        </button>
+    </div>
+</div>
+
+<div id="toast" class="toast"></div>
+
+<script src="/static/js/main.js"></script>
+<script>
+    const user = getUser();
+    if (!user) { location.href = '/auth/'; }
+    if (user && user.role !== 'landlord') {
+        toast('Только арендодатели могут создавать объявления', 'error');
+        setTimeout(() => location.href = '/', 1500);
+    }
+    updateNav();
+
+    async function createListing() {
+        const title = document.getElementById('f-title').value.trim();
+        const description = document.getElementById('f-description').value.trim();
+        const city = document.getElementById('f-city').value.trim();
+        const district = document.getElementById('f-district').value.trim();
+        const address = document.getElementById('f-address').value.trim();
+        const property_type = document.getElementById('f-type').value;
+        const rooms = document.getElementById('f-rooms').value;
+        const price_per_night = document.getElementById('f-price').value;
+
+        if (!title || !description || !city || !rooms || !price_per_night) {
+            toast('Заполните обязательные поля', 'error');
+            return;
+        }
+
+        try {
+            const listing = await request(`${API}/listings/`, 'POST', {
+                title, description, city, district, address,
+                property_type, rooms: Number(rooms), price_per_night: Number(price_per_night),
+            });
+            toast('Объявление создано!', 'success');
+            setTimeout(() => location.href = `/listing/?id=${listing.id}`, 800);
+        } catch(e) {
+            const firstError = Object.values(e)[0];
+            const msg = Array.isArray(firstError) ? firstError[0] : (e.detail || 'Ошибка при создании');
+            toast(msg, 'error');
+        }
+    }
+</script>
+</body>
+</html>

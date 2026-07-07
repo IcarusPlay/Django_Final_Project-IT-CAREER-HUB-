@@ -60,7 +60,7 @@ function updateNav() {
             <div class="user-menu">
                 <div class="user-avatar" onclick="toggleDropdown()">${user.username[0].toUpperCase()}</div>
                 <div class="user-dropdown" id="user-dropdown">
-                    <a href="/profile/">${user.email}</a>
+                    <a href="#" style="cursor:default; color:#888;">${user.email}</a>
                     <hr>
                     <a href="#" onclick="logout()">Выйти</a>
                 </div>

@@ -19,6 +19,8 @@ urlpatterns = [
 
     # Frontend страницы
     path('', TemplateView.as_view(template_name='index.html'), name='home'),
+    path('listings/', TemplateView.as_view(template_name='listings.html'), name='listings'),
+    path('listings/create/', TemplateView.as_view(template_name='listing_create.html'), name='listing-create'),
     path('listing/', TemplateView.as_view(template_name='listing.html'), name='listing'),
     path('auth/', TemplateView.as_view(template_name='auth.html'), name='auth'),
     path('bookings/', TemplateView.as_view(template_name='bookings.html'), name='bookings'),

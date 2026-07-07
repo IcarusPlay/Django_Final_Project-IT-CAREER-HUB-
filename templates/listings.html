@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Объявления - Livento</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+
+<nav>
+    <a href="/" class="nav-logo">🏠 Livento</a>
+    <div class="nav-links" id="nav-links"></div>
+</nav>
+
+<div class="container">
+    <div class="filters">
+        <input type="text" id="search-input" placeholder="Поиск по названию или описанию...">
+        <select id="city-input">
+            <option value="">Любой город</option>
+            <option value="Berlin">Berlin</option>
+            <option value="Munich">Munich</option>
+            <option value="Hamburg">Hamburg</option>
+            <option value="Frankfurt">Frankfurt</option>
+            <option value="Cologne">Cologne</option>
+            <option value="Stuttgart">Stuttgart</option>
+            <option value="Düsseldorf">Düsseldorf</option>
+            <option value="Rees">Rees</option>
+        </select>
+        <select id="type-input">
+            <option value="">Любой тип</option>
+            <option value="apartment">Квартира</option>
+            <option value="house">Дом</option>
+            <option value="room">Комната</option>
+            <option value="studio">Студия</option>
+        </select>
+        <input type="number" id="price-min" placeholder="Цена от €">
+        <input type="number" id="price-max" placeholder="Цена до €">
+        <input type="number" id="rooms-min" placeholder="Комнат от">
+        <input type="number" id="rooms-max" placeholder="Комнат до">
+        <select id="ordering">
+            <option value="-created_at">Сначала новые</option>
+            <option value="created_at">Сначала старые</option>
+            <option value="price_per_night">Цена: по возрастанию</option>
+            <option value="-price_per_night">Цена: по убыванию</option>
+            <option value="-views_count">Популярные</option>
+        </select>
+        <button class="btn btn-primary" onclick="searchListings()">Найти</button>
+        <button class="btn btn-secondary" onclick="resetFilters()">Сбросить</button>
+    </div>
+
+    <h2 class="section-title" id="results-title">Все объявления</h2>
+    <div id="listings-grid" class="listings-grid">
+        <div class="loading">Загружаем объявления...</div>
+    </div>
+</div>
+
+<div id="toast" class="toast"></div>
+
+<script src="/static/js/main.js"></script>
+<script>
+    updateNav();
+    loadListings();
+
+    async function loadListings(params = {}) {
+        const grid = document.getElementById('listings-grid');
+        grid.innerHTML = '<div class="loading">Загружаем объявления...</div>';
+
+        try {
+            const query = new URLSearchParams(params).toString();
+            const data = await request(`${API}/listings/?${query}`);
+            const listings = data.results || data;
+
+            if (!listings.length) {
+                grid.innerHTML = `
+                    <div class="empty" style="grid-column: 1/-1">
+                        <div class="empty-icon">🏚️</div>
+                        <p>Объявлений не найдено</p>
+                    </div>`;
+                return;
+            }
+
+            grid.innerHTML = listings.map(l => `
+                <a href="/listing/?id=${l.id}" class="listing-card">
+                    <div class="listing-card-img">${propertyIcon(l.property_type)}</div>
+                    <div class="listing-card-body">
+                        <div class="listing-card-title">${l.title}</div>
+                        <div class="listing-card-location">
+                            <span>📍</span>${l.city}${l.district ? ', ' + l.district : ''}
+                        </div>
+                        <div class="listing-card-footer">
+                            <div class="listing-card-price">
+                                €${l.price_per_night} <span>/ ночь</span>
+                            </div>
+                            <span class="badge badge-type">${l.property_type}</span>
+                        </div>
+                        <div style="margin-top:8px; font-size:12px; color:#aaa;">
+                            👁 ${l.views_count || 0} просмотров · 🛏 ${l.rooms} комн.
+                        </div>
+                    </div>
+                </a>
+            `).join('');
+
+        } catch(e) {
+            grid.innerHTML = '<div class="empty" style="grid-column:1/-1"><div class="empty-icon">⚠️</div><p>Не удалось загрузить объявления</p></div>';
+        }
+    }
+
+    function searchListings() {
+        const params = {};
+        const search = document.getElementById('search-input').value.trim();
+        const city = document.getElementById('city-input').value;
+        const type = document.getElementById('type-input').value;
+        const priceMin = document.getElementById('price-min').value;
+        const priceMax = document.getElementById('price-max').value;
+        const roomsMin = document.getElementById('rooms-min').value;
+        const roomsMax = document.getElementById('rooms-max').value;
+        const ordering = document.getElementById('ordering').value;
+
+        if (search) params.search = search;
+        if (city) params.city = city;
+        if (type) params.property_type = type;
+        if (priceMin) params.price_min = priceMin;
+        if (priceMax) params.price_max = priceMax;
+        if (roomsMin) params.rooms_min = roomsMin;
+        if (roomsMax) params.rooms_max = roomsMax;
+        if (ordering) params.ordering = ordering;
+
+        const title = search ? `Результаты для "${search}"` : 'Все объявления';
+        document.getElementById('results-title').textContent = title;
+
+        loadListings(params);
+    }
+
+    function resetFilters() {
+        document.getElementById('search-input').value = '';
+        document.getElementById('city-input').value = '';
+        document.getElementById('type-input').value = '';
+        document.getElementById('price-min').value = '';
+        document.getElementById('price-max').value = '';
+        document.getElementById('rooms-min').value = '';
+        document.getElementById('rooms-max').value = '';
+        document.getElementById('ordering').value = '-created_at';
+        document.getElementById('results-title').textContent = 'Все объявления';
+        loadListings();
+    }
+</script>
+</body>
+</html>
