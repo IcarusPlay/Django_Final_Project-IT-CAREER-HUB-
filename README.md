@@ -149,7 +149,7 @@ Django_Final_Project/
 ### Фильтры для GET /api/listings/
 | Параметр | Описание | Пример |
 |----------|----------|--------|
-| `search` | Поиск по названию и описанию | `?search=квартира` |
+| `search` | Поиск по названию и описанию | `?search=apartment` |
 | `city` | Фильтр по городу | `?city=Berlin` |
 | `district` | Фильтр по району | `?district=Mitte` |
 | `property_type` | Тип жилья | `?property_type=apartment` |
