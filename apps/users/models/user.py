@@ -1,19 +1,26 @@
 from django.contrib.auth.models import AbstractUser
+from django.core.validators import RegexValidator
 from django.db import models
 
 
 class User(AbstractUser):
-    LANDLORD = 'landlord'
-    TENANT = 'tenant'
 
-    ROLE_CHOICES = [
-        (LANDLORD, 'Landlord'),   # арендодатель — может создавать объявления
-        (TENANT, 'Tenant'),        # арендатор — может бронировать и оставлять отзывы
-    ]
+    class Role(models.TextChoices):
+        LANDLORD = 'landlord', 'Landlord'   # арендодатель — может создавать объявления
+        TENANT = 'tenant', 'Tenant'          # арендатор — может бронировать и оставлять отзывы
+
+    phone_validator = RegexValidator(
+        regex=r'^\+?[1-9]\d{7,14}$',
+        message='Введите номер телефона в формате +49123456789 (от 8 до 15 цифр)'
+    )
 
     email = models.EmailField(unique=True)
-    phone = models.CharField(max_length=20, blank=True)
-    role = models.CharField(max_length=20, choices=ROLE_CHOICES, default=TENANT)
+    phone = models.CharField(
+        max_length=20,
+        blank=True,
+        validators=[phone_validator],
+    )
+    role = models.CharField(max_length=20, choices=Role.choices, default=Role.TENANT)
     created_at = models.DateTimeField(auto_now_add=True)
 
     USERNAME_FIELD = 'email'
@@ -23,10 +30,10 @@ class User(AbstractUser):
         return self.email
 
     def is_landlord(self):
-        return self.role == self.LANDLORD
+        return self.role == self.Role.LANDLORD
 
     def is_tenant(self):
-        return self.role == self.TENANT
+        return self.role == self.Role.TENANT
 
     class Meta:
         db_table = 'users'

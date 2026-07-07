@@ -11,7 +11,7 @@ class UserRepository:
         return User.objects.filter(email=email).first()
 
     @staticmethod
-    def create(email, username, password, phone='', role=User.TENANT):
+    def create(email, username, password, phone='', role=User.Role.TENANT):
         return User.objects.create_user(
             email=email,
             username=username,

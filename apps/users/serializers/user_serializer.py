@@ -16,7 +16,7 @@ class RegisterSerializer(serializers.ModelSerializer):
             username=validated_data['username'],
             password=validated_data['password'],
             phone=validated_data.get('phone', ''),
-            role=validated_data.get('role', User.TENANT),
+            role=validated_data.get('role', User.Role.TENANT),
         )
         return user
 
