@@ -4,11 +4,12 @@ from apps.reviews.models import Review
 class ReviewRepository:
     @staticmethod
     def get_by_listing(listing):
-        return Review.objects.filter(listing=listing).select_related('author', 'booking')
+        # listing больше не хранится в Review напрямую - фильтруем через связь booking__listing
+        return Review.objects.filter(booking__listing=listing).select_related('author', 'booking')
 
     @staticmethod
     def get_by_id(review_id):
-        return Review.objects.select_related('author', 'listing', 'booking').filter(id=review_id).first()
+        return Review.objects.select_related('author', 'booking', 'booking__listing').filter(id=review_id).first()
 
     @staticmethod
     def already_reviewed(booking):
@@ -16,10 +17,9 @@ class ReviewRepository:
         return Review.objects.filter(booking=booking).exists()
 
     @staticmethod
-    def create(author, listing, booking, rating, comment):
+    def create(author, booking, rating, comment):
         return Review.objects.create(
             author=author,
-            listing=listing,
             booking=booking,
             rating=rating,
             comment=comment,

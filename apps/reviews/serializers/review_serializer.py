@@ -4,11 +4,14 @@ from apps.reviews.models import Review
 
 class ReviewSerializer(serializers.ModelSerializer):
     author_email = serializers.EmailField(source='author.email', read_only=True)
+    # listing больше не хранится в модели напрямую - берём его через booking.listing_id
+    # только для чтения, чтобы фронтенду не пришлось делать лишний запрос
+    listing = serializers.IntegerField(source='booking.listing_id', read_only=True)
 
     class Meta:
         model = Review
         fields = ['id', 'listing', 'author_email', 'booking', 'rating', 'comment', 'created_at']
-        read_only_fields = ['id', 'author_email', 'created_at']
+        read_only_fields = ['id', 'listing', 'author_email', 'created_at']
 
 
 class ReviewCreateSerializer(serializers.ModelSerializer):

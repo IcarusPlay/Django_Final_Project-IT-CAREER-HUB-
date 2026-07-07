@@ -4,17 +4,14 @@ from django.core.validators import MinValueValidator, MaxValueValidator
 
 
 class Review(models.Model):
-    listing = models.ForeignKey(
-        'listings.Listing',
-        on_delete=models.CASCADE,
-        related_name='reviews'
-    )
     author = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
         related_name='reviews'
     )
-    # отзыв можно оставить только если было подтверждённое бронирование
+    # отзыв можно оставить только если было подтверждённое бронирование.
+    # listing здесь не хранится отдельно - его всегда можно получить через booking.listing,
+    # так как для 3NF нельзя хранить значение, зависящее не от PK, а от другого поля (booking)
     booking = models.OneToOneField(
         'bookings.Booking',
         on_delete=models.CASCADE,
@@ -28,7 +25,7 @@ class Review(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return f'Review by {self.author.email} on {self.listing.title}'
+        return f'Review by {self.author.email} on {self.booking.listing.title}'
 
     class Meta:
         db_table = 'reviews'

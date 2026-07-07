@@ -29,9 +29,9 @@ class ReviewService:
         if ReviewRepository.already_reviewed(booking):
             raise ValidationError('Вы уже оставили отзыв на это бронирование')
 
+        # listing больше отдельно не передаём - он всегда доступен через booking.listing
         return ReviewRepository.create(
             author=author,
-            listing=booking.listing,
             booking=booking,
             rating=validated_data['rating'],
             comment=validated_data.get('comment', ''),
