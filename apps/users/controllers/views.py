@@ -14,6 +14,9 @@ class RegisterView(APIView):
         serializer = RegisterSerializer(data=request.data)
         if serializer.is_valid():
             user = UserService.register(serializer.validated_data)
+            # раньше тут не было логина - пользователь создавался, но сессия не заводилась,
+            # из-за чего фронтенд думал что юзер вошёл (localStorage), а бэкенд его не узнавал
+            UserService.login_user(request, user)
             return Response(UserSerializer(user).data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 

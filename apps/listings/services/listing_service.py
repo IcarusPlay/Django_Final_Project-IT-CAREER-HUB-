@@ -18,14 +18,36 @@ class ListingService:
         return result
 
     @staticmethod
-    def get_by_id(listing_id, user=None):
+    def get_by_id(listing_id):
+        # просто получить объявление, БЕЗ побочных эффектов -
+        # используется для редактирования/удаления/отзывов, где счётчик просмотров
+        # increment-иться не должен (раньше это было главной причиной бага со скачущими просмотрами)
         listing = ListingRepository.get_by_id(listing_id)
         if not listing:
             raise NotFound('Объявление не найдено')
+        return listing
 
-        # записываем просмотр и увеличиваем счётчик
-        ListingRepository.save_view(listing, user)
-        listing = ListingRepository.increment_views(listing)
+    @staticmethod
+    def get_by_id_and_track_view(listing_id, request):
+        # именно этот метод нужно вызывать только при реальном открытии страницы объявления
+        listing = ListingService.get_by_id(listing_id)
+
+        user = request.user if request.user.is_authenticated else None
+
+        # не считаем просмотры самого владельца - он не "посетитель"
+        if user and listing.owner_id == user.id:
+            return listing
+
+        # дедупликация: один и тот же пользователь / анонимная сессия
+        # не накручивает счётчик повторными заходами
+        if not request.session.session_key:
+            request.session.save()
+        session_key = request.session.session_key
+
+        already_viewed = ListingRepository.has_viewed(listing, user, session_key)
+        if not already_viewed:
+            ListingRepository.save_view(listing, user, session_key)
+            listing = ListingRepository.increment_views(listing)
 
         return listing
 
@@ -64,3 +86,7 @@ class ListingService:
     @staticmethod
     def get_search_history(user):
         return ListingRepository.get_search_history(user)
+
+    @staticmethod
+    def get_cities():
+        return list(ListingRepository.get_distinct_cities())

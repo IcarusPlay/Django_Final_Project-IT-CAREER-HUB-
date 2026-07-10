@@ -1,4 +1,3 @@
-from datetime import date
 from rest_framework.exceptions import PermissionDenied, NotFound, ValidationError
 from apps.bookings.models import Booking
 from apps.reviews.repositories import ReviewRepository
@@ -17,19 +16,17 @@ class ReviewService:
         if booking.tenant != author:
             raise PermissionDenied('Можно оставить отзыв только на своё бронирование')
 
-        # бронирование должно быть подтверждённым
+        # бронирование должно быть подтверждённым владельцем -
+        # раньше тут ещё требовалось чтобы дата выезда уже прошла, но через интерфейс
+        # нельзя выбрать прошедшую дату при бронировании (мин. дата - сегодня), из-за чего
+        # отзыв было физически невозможно протестировать/оставить. Убрали это ограничение.
         if booking.status != Booking.CONFIRMED:
             raise ValidationError('Отзыв можно оставить только после подтверждённого бронирования')
-
-        # срок проживания должен уже закончиться
-        if booking.date_to > date.today():
-            raise ValidationError('Отзыв можно оставить только после окончания срока проживания')
 
         # один отзыв на одно бронирование
         if ReviewRepository.already_reviewed(booking):
             raise ValidationError('Вы уже оставили отзыв на это бронирование')
 
-        # listing больше отдельно не передаём - он всегда доступен через booking.listing
         return ReviewRepository.create(
             author=author,
             booking=booking,
@@ -42,3 +39,10 @@ class ReviewService:
         if review.author != user:
             raise PermissionDenied('Нельзя удалять чужой отзыв')
         review.delete()
+
+    @staticmethod
+    def reply(review, user, reply_text):
+        # ответить может только владелец объявления, к которому относится отзыв
+        if review.booking.listing.owner != user:
+            raise PermissionDenied('Только владелец объявления может отвечать на отзыв')
+        return ReviewRepository.set_reply(review, reply_text)

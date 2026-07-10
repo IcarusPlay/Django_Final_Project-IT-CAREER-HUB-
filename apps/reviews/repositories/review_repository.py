@@ -1,3 +1,4 @@
+from django.utils import timezone
 from apps.reviews.models import Review
 
 
@@ -24,3 +25,10 @@ class ReviewRepository:
             rating=rating,
             comment=comment,
         )
+
+    @staticmethod
+    def set_reply(review, reply_text):
+        review.landlord_reply = reply_text
+        review.replied_at = timezone.now()
+        review.save()
+        return review

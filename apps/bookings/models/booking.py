@@ -32,6 +32,11 @@ class Booking(models.Model):
     total_price = models.DecimalField(max_digits=10, decimal_places=2)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default=PENDING)
 
+    # видел ли арендатор уведомление об изменении статуса этой заявки
+    # (True по умолчанию - "нечего показывать"; сбрасывается в False при confirm/reject,
+    # чтобы арендатор увидел уведомление один раз, потом отметится как просмотренное)
+    tenant_notified = models.BooleanField(default=True)
+
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):

@@ -1,1 +1,1 @@
-from .review_serializer import ReviewSerializer, ReviewCreateSerializer
+from .review_serializer import ReviewSerializer, ReviewCreateSerializer, ReviewReplySerializer

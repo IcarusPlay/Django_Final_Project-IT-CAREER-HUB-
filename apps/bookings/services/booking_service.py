@@ -72,15 +72,63 @@ class BookingService:
         if booking.listing.owner != user:
             raise PermissionDenied('Только владелец объявления может подтверждать бронирование')
         BookingService._check_transition(booking, Booking.CONFIRMED)
-        return BookingRepository.set_status(booking, Booking.CONFIRMED)
+
+        # защита от двойного подтверждения: если на эти же даты уже есть
+        # ДРУГОЕ подтверждённое бронирование этого объявления - подтвердить нельзя
+        has_conflict = BookingRepository.has_date_conflict(
+            booking.listing,
+            booking.date_from,
+            booking.date_to,
+            exclude_booking_id=booking.id,
+            statuses=[Booking.CONFIRMED],
+        )
+        if has_conflict:
+            raise ValidationError(
+                'На эти даты уже подтверждено другое бронирование. '
+                'Сначала отклоните или отмените конфликтующую заявку.'
+            )
+
+        booking = BookingRepository.set_status(booking, Booking.CONFIRMED)
+        # арендатор ещё не видел это изменение статуса - появится уведомление
+        BookingRepository.set_tenant_notified(booking, False)
+        return booking
 
     @staticmethod
     def reject(booking, user):
         if booking.listing.owner != user:
             raise PermissionDenied('Только владелец объявления может отклонять бронирование')
         BookingService._check_transition(booking, Booking.REJECTED)
-        return BookingRepository.set_status(booking, Booking.REJECTED)
+        booking = BookingRepository.set_status(booking, Booking.REJECTED)
+        BookingRepository.set_tenant_notified(booking, False)
+        return booking
 
     @staticmethod
     def get_my_bookings(tenant):
         return BookingRepository.get_by_tenant(tenant)
+
+    @staticmethod
+    def get_incoming_bookings(landlord):
+        # заявки на бронирование объявлений этого арендодателя
+        return BookingRepository.get_by_landlord(landlord)
+
+    @staticmethod
+    def get_pending_count(landlord):
+        if not landlord.is_landlord():
+            return 0
+        return BookingRepository.count_pending_for_landlord(landlord)
+
+    @staticmethod
+    def get_unseen_notifications_count(tenant):
+        if not tenant.is_tenant():
+            return 0
+        return BookingRepository.count_unseen_notifications(tenant)
+
+    @staticmethod
+    def mark_notifications_seen(tenant):
+        BookingRepository.mark_all_notified(tenant)
+
+    @staticmethod
+    def get_booked_ranges(listing):
+        # список занятых диапазонов дат (pending + confirmed) - для проверки на фронтенде
+        # ДО отправки запроса, чтобы пользователь сразу видел что даты заняты
+        return BookingRepository.get_active_date_ranges(listing)

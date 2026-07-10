@@ -65,6 +65,12 @@
             <input type="number" id="f-price" min="1" step="0.01" placeholder="85">
         </div>
 
+        <div class="form-group">
+            <label>Фото объявления (необязательно)</label>
+            <input type="file" id="f-image" accept="image/*" onchange="previewImage(event)">
+            <img id="image-preview" style="display:none; margin-top:10px; max-width:100%; border-radius:8px;">
+        </div>
+
         <button class="btn btn-primary" style="width:100%; padding:12px" onclick="createListing()">
             Создать объявление
         </button>
@@ -83,6 +89,17 @@
     }
     updateNav();
 
+    function previewImage(event) {
+        const file = event.target.files[0];
+        const preview = document.getElementById('image-preview');
+        if (file) {
+            preview.src = URL.createObjectURL(file);
+            preview.style.display = 'block';
+        } else {
+            preview.style.display = 'none';
+        }
+    }
+
     async function createListing() {
         const title = document.getElementById('f-title').value.trim();
         const description = document.getElementById('f-description').value.trim();
@@ -92,6 +109,7 @@
         const property_type = document.getElementById('f-type').value;
         const rooms = document.getElementById('f-rooms').value;
         const price_per_night = document.getElementById('f-price').value;
+        const imageFile = document.getElementById('f-image').files[0];
 
         if (!title || !description || !city || !rooms || !price_per_night) {
             toast('Заполните обязательные поля', 'error');
@@ -99,10 +117,19 @@
         }
 
         try {
-            const listing = await request(`${API}/listings/`, 'POST', {
-                title, description, city, district, address,
-                property_type, rooms: Number(rooms), price_per_night: Number(price_per_night),
-            });
+            // FormData нужен для отправки файла - через обычный JSON картинку не передать
+            const formData = new FormData();
+            formData.append('title', title);
+            formData.append('description', description);
+            formData.append('city', city);
+            formData.append('district', district);
+            formData.append('address', address);
+            formData.append('property_type', property_type);
+            formData.append('rooms', rooms);
+            formData.append('price_per_night', price_per_night);
+            if (imageFile) formData.append('image', imageFile);
+
+            const listing = await requestMultipart(`${API}/listings/`, 'POST', formData);
             toast('Объявление создано!', 'success');
             setTimeout(() => location.href = `/listing/?id=${listing.id}`, 800);
         } catch(e) {

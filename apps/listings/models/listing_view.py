@@ -16,6 +16,10 @@ class ListingView(models.Model):
         blank=True,  # аноним тоже может смотреть
         related_name='listing_views'
     )
+    # для анонимных пользователей дедуплицируем по session_key,
+    # чтобы один и тот же посетитель не накручивал счётчик за одну сессию
+    session_key = models.CharField(max_length=40, null=True, blank=True)
+
     viewed_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

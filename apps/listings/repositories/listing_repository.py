@@ -1,4 +1,4 @@
-from django.db.models import Count
+from django.db.models import Count, F
 from apps.listings.models import Listing, ListingView, SearchHistory
 
 
@@ -43,16 +43,25 @@ class ListingRepository:
     @staticmethod
     def increment_views(listing):
         # F() выражение — атомарное обновление без race condition
-        from django.db.models import F
         Listing.objects.filter(id=listing.id).update(views_count=F('views_count') + 1)
         listing.refresh_from_db()
         return listing
 
     @staticmethod
-    def save_view(listing, user):
+    def has_viewed(listing, user, session_key):
+        # проверяем не смотрел ли уже этот пользователь / анонимная сессия это объявление
+        if user and user.is_authenticated:
+            return ListingView.objects.filter(listing=listing, user=user).exists()
+        if session_key:
+            return ListingView.objects.filter(listing=listing, session_key=session_key, user__isnull=True).exists()
+        return False
+
+    @staticmethod
+    def save_view(listing, user, session_key=None):
         ListingView.objects.create(
             listing=listing,
-            user=user if user and user.is_authenticated else None
+            user=user if user and user.is_authenticated else None,
+            session_key=session_key if not (user and user.is_authenticated) else None,
         )
 
     @staticmethod
@@ -73,3 +82,15 @@ class ListingRepository:
     @staticmethod
     def get_search_history(user):
         return SearchHistory.objects.filter(user=user)
+
+    @staticmethod
+    def get_distinct_cities():
+        # список уникальных городов из уже существующих объявлений —
+        # нужен чтобы город, который ввёл арендодатель, сразу появлялся в фильтре поиска
+        return (
+            Listing.objects
+            .exclude(city='')
+            .values_list('city', flat=True)
+            .distinct()
+            .order_by('city')
+        )

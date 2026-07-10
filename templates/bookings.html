@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Мои бронирования - Livento</title>
+    <title>Бронирования - Livento</title>
     <link rel="stylesheet" href="/static/css/style.css">
 </head>
 <body>
@@ -14,7 +14,7 @@
 </nav>
 
 <div class="container">
-    <h2 class="section-title">Мои бронирования</h2>
+    <h2 class="section-title" id="page-title">Мои бронирования</h2>
     <div id="bookings-list"></div>
 </div>
 
@@ -22,8 +22,17 @@
 
 <script src="/static/js/main.js"></script>
 <script>
-    if (!getUser()) { location.href = '/auth/'; }
+    const user = getUser();
+    if (!user) { location.href = '/auth/'; }
     updateNav();
+
+    // арендодателю показываем входящие заявки, арендатору - его брони
+    const isLandlord = user && user.role === 'landlord';
+    document.getElementById('page-title').textContent = isLandlord ? 'Заявки на аренду' : 'Мои бронирования';
+
+    // пункт 2: отмечаем все уведомления о смене статуса как просмотренные
+    if (!isLandlord) markNotificationsSeen();
+
     loadBookings();
 
     async function loadBookings() {
@@ -31,11 +40,14 @@
         list.innerHTML = '<div class="loading">Загружаем бронирования...</div>';
 
         try {
+            // бэкенд сам решает что вернуть: арендодателю - входящие заявки,
+            // арендатору - его собственные бронирования (см. BookingListCreateView.get)
             const data = await request(`${API}/bookings/`);
             const bookings = data.results || data;
 
             if (!bookings.length) {
-                list.innerHTML = `<div class="empty"><div class="empty-icon">📅</div><p>У вас нет бронирований</p><a href="/" class="btn btn-primary" style="margin-top:16px">Найти жильё</a></div>`;
+                const emptyText = isLandlord ? 'Пока нет заявок на ваши объявления' : 'У вас нет бронирований';
+                list.innerHTML = `<div class="empty"><div class="empty-icon">📅</div><p>${emptyText}</p><a href="/" class="btn btn-primary" style="margin-top:16px">${isLandlord ? 'К объявлениям' : 'Найти жильё'}</a></div>`;
                 return;
             }
 
@@ -53,12 +65,31 @@
                 rejected: 'Отклонено',
             };
 
-            list.innerHTML = bookings.map(b => `
+            list.innerHTML = bookings.map(b => {
+                // арендодателю показываем кнопки подтвердить/отклонить, пока заявка pending
+                const landlordActions = (isLandlord && b.status === 'pending') ? `
+                    <button class="btn btn-primary" style="font-size:13px; padding:6px 14px" onclick="confirmBooking(${b.id})">
+                        Подтвердить
+                    </button>
+                    <button class="btn btn-secondary" style="font-size:13px; padding:6px 14px" onclick="rejectBooking(${b.id})">
+                        Отклонить
+                    </button>
+                ` : '';
+
+                // арендатору - кнопка отмены, пока заявка pending
+                const tenantActions = (!isLandlord && b.status === 'pending') ? `
+                    <button class="btn btn-secondary" style="font-size:13px; padding:6px 14px" onclick="cancelBooking(${b.id})">
+                        Отменить
+                    </button>
+                ` : '';
+
+                return `
                 <div style="background:#fff; border-radius:12px; padding:20px; margin-bottom:16px; box-shadow:0 1px 4px rgba(0,0,0,0.08); display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
                     <div>
                         <div style="font-weight:600; font-size:16px; margin-bottom:4px;">
                             <a href="/listing/?id=${b.listing}" style="color:#333; text-decoration:none;">Объявление #${b.listing}</a>
                         </div>
+                        ${isLandlord ? `<div style="font-size:13px; color:#555; margin-bottom:2px;">👤 Заявка от: <strong>${b.tenant_username}</strong> (${b.tenant_email})</div>` : ''}
                         <div style="font-size:13px; color:#888;">
                             📅 ${b.date_from} → ${b.date_to}
                         </div>
@@ -70,14 +101,12 @@
                         <span style="background:${statusColors[b.status]}22; color:${statusColors[b.status]}; padding:4px 12px; border-radius:20px; font-size:13px; font-weight:500;">
                             ${statusLabels[b.status] || b.status}
                         </span>
-                        ${b.status === 'pending' ? `
-                            <button class="btn btn-secondary" style="font-size:13px; padding:6px 14px" onclick="cancelBooking(${b.id})">
-                                Отменить
-                            </button>
-                        ` : ''}
+                        ${landlordActions}
+                        ${tenantActions}
                     </div>
                 </div>
-            `).join('');
+            `;
+            }).join('');
 
         } catch(e) {
             list.innerHTML = '<div class="empty"><div class="empty-icon">⚠️</div><p>Не удалось загрузить бронирования</p></div>';
@@ -90,6 +119,29 @@
             await request(`${API}/bookings/${id}/cancel/`, 'POST');
             toast('Бронирование отменено', 'success');
             loadBookings();
+        } catch(e) {
+            toast(e.detail || e.error || 'Ошибка', 'error');
+        }
+    }
+
+    async function confirmBooking(id) {
+        try {
+            await request(`${API}/bookings/${id}/confirm/`, 'POST');
+            toast('Бронирование подтверждено', 'success');
+            loadBookings();
+            updateIncomingBadge();
+        } catch(e) {
+            toast(e.detail || e.error || 'Ошибка', 'error');
+        }
+    }
+
+    async function rejectBooking(id) {
+        if (!confirm('Отклонить эту заявку?')) return;
+        try {
+            await request(`${API}/bookings/${id}/reject/`, 'POST');
+            toast('Заявка отклонена', 'success');
+            loadBookings();
+            updateIncomingBadge();
         } catch(e) {
             toast(e.detail || e.error || 'Ошибка', 'error');
         }

@@ -47,6 +47,9 @@ class Listing(models.Model):
         default=ListingStatus.ACTIVE
     )
 
+    # фото объявления — необязательное поле
+    image = models.ImageField(upload_to='listings/', null=True, blank=True)
+
     # счётчик просмотров — обновляется при каждом GET запросе
     views_count = models.PositiveIntegerField(default=0)
 

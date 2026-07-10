@@ -32,9 +32,8 @@
     async function loadListing() {
         try {
             const l = await request(`${API}/listings/${listingId}/`);
-            document.title = `${l.title} - RentHub`;
+            document.title = `${l.title} - Livento`;
 
-            // считаем среднюю оценку из отзывов
             let avgRating = '';
             try {
                 const reviewsData = await request(`${API}/reviews/${listingId}/reviews/`);
@@ -48,7 +47,7 @@
             document.getElementById('content').innerHTML = `
                 <div class="detail-grid">
                     <div>
-                        <div class="detail-img">${propertyIcon(l.property_type)}</div>
+                        <div class="detail-img">${listingImageHtml(l)}</div>
                         <div class="detail-title">${l.title}</div>
                         <div class="detail-location">
                             📍 ${l.city}${l.district ? ', ' + l.district : ''}
@@ -73,13 +72,15 @@
 
                         <p class="detail-description">${l.description}</p>
 
-                        <div style="display:flex; gap:8px; margin-bottom:24px;">
+                        <div style="display:flex; gap:8px; margin-bottom:24px; flex-wrap:wrap;">
                             <span class="badge badge-type">${l.property_type}</span>
                             <span class="badge">👤 ${l.owner?.username || 'Арендодатель'}</span>
+                            ${bookedBadgeHtml(l)}
                         </div>
 
                         <div class="reviews-section" id="reviews-section">
                             <h3 style="font-size:18px; margin-bottom:16px;">Отзывы</h3>
+                            <div id="review-form-container"></div>
                             <div id="reviews-list"><div class="loading">Загружаем отзывы...</div></div>
                         </div>
                     </div>
@@ -115,7 +116,8 @@
                 </div>
             `;
 
-            loadReviews();
+            loadReviews(l);
+            loadReviewForm();
             setMinDates();
             window._listing = l;
 
@@ -124,7 +126,10 @@
         }
     }
 
-    async function loadReviews() {
+    async function loadReviews(listing) {
+        const user = getUser();
+        const isOwner = user && listing.owner && user.email === listing.owner.email;
+
         try {
             const data = await request(`${API}/reviews/${listingId}/reviews/`);
             const reviews = data.results || data;
@@ -142,9 +147,107 @@
                         <span class="stars">${stars(r.rating)}</span>
                     </div>
                     ${r.comment ? `<p class="review-text">${r.comment}</p>` : ''}
+
+                    ${r.landlord_reply ? `
+                        <div style="background:#f0f9f8; border-left:3px solid #14b8a6; border-radius:6px; padding:10px 12px; margin-top:10px;">
+                            <div style="font-size:12px; font-weight:600; color:#0d9488; margin-bottom:4px;">Ответ арендодателя</div>
+                            <div style="font-size:13px; color:#444;">${r.landlord_reply}</div>
+                        </div>
+                    ` : (isOwner ? `
+                        <div style="margin-top:10px;">
+                            <button class="btn btn-secondary" style="font-size:12px; padding:4px 10px;" onclick="showReplyForm(${r.id})">
+                                Ответить на отзыв
+                            </button>
+                            <div id="reply-form-${r.id}" style="display:none; margin-top:8px;">
+                                <input type="text" id="reply-input-${r.id}" placeholder="Ваш ответ..." style="width:100%; border:1px solid #e0e0e0; border-radius:6px; padding:8px 10px; font-size:13px; margin-bottom:6px;">
+                                <button class="btn btn-primary" style="font-size:12px; padding:4px 10px;" onclick="submitReply(${r.id})">Отправить</button>
+                            </div>
+                        </div>
+                    ` : '')}
                 </div>
             `).join('');
         } catch(e) {}
+    }
+
+    function showReplyForm(reviewId) {
+        const form = document.getElementById(`reply-form-${reviewId}`);
+        if (form) form.style.display = 'block';
+    }
+
+    async function submitReply(reviewId) {
+        const input = document.getElementById(`reply-input-${reviewId}`);
+        const reply = input.value.trim();
+        if (!reply) { toast('Введите текст ответа', 'error'); return; }
+
+        try {
+            await request(`${API}/reviews/${listingId}/reviews/${reviewId}/reply/`, 'POST', { reply });
+            toast('Ответ добавлен', 'success');
+            const l = window._listing;
+            loadReviews(l);
+        } catch(e) {
+            toast(extractErrorMessage(e, 'Не удалось отправить ответ'), 'error');
+        }
+    }
+
+    // раньше отзыв требовал чтобы дата выезда УЖЕ ПРОШЛА, но через интерфейс нельзя
+    // выбрать прошедшую дату при бронировании - отзыв было физически невозможно оставить.
+    // теперь достаточно чтобы бронирование было подтверждено
+    async function loadReviewForm() {
+        const user = getUser();
+        const container = document.getElementById('review-form-container');
+        if (!user || user.role !== 'tenant') return;
+
+        try {
+            const data = await request(`${API}/bookings/`);
+            const bookings = data.results || data;
+
+            const eligible = bookings.find(b =>
+                String(b.listing) === String(listingId) &&
+                b.status === 'confirmed' &&
+                !b.has_review
+            );
+
+            if (!eligible) return;
+
+            container.innerHTML = `
+                <div style="background:#f9f9f9; border-radius:10px; padding:16px; margin-bottom:16px;">
+                    <div style="font-weight:600; margin-bottom:10px; font-size:14px;">Оставить отзыв</div>
+                    <div class="form-group">
+                        <label>Оценка</label>
+                        <select id="review-rating">
+                            <option value="5">★★★★★ Отлично</option>
+                            <option value="4">★★★★☆ Хорошо</option>
+                            <option value="3">★★★☆☆ Нормально</option>
+                            <option value="2">★★☆☆☆ Плохо</option>
+                            <option value="1">★☆☆☆☆ Ужасно</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Комментарий (необязательно)</label>
+                        <input type="text" id="review-comment" placeholder="Поделитесь впечатлениями">
+                    </div>
+                    <button class="btn btn-primary" onclick="submitReview(${eligible.id})">Отправить отзыв</button>
+                </div>
+            `;
+        } catch(e) {}
+    }
+
+    async function submitReview(bookingId) {
+        const rating = document.getElementById('review-rating').value;
+        const comment = document.getElementById('review-comment').value.trim();
+
+        try {
+            await request(`${API}/reviews/${listingId}/reviews/`, 'POST', {
+                booking: bookingId,
+                rating: Number(rating),
+                comment,
+            });
+            toast('Отзыв добавлен, спасибо!', 'success');
+            document.getElementById('review-form-container').innerHTML = '';
+            loadReviews(window._listing);
+        } catch(e) {
+            toast(extractErrorMessage(e, 'Не удалось отправить отзыв'), 'error');
+        }
     }
 
     function setMinDates() {
@@ -192,6 +295,14 @@
             return;
         }
 
+        // пункт 3: проверяем занятость дат ДО отправки - сразу понятное сообщение,
+        // а не общая ошибка после клика
+        const available = await checkDatesAvailable(listingId, dateFrom, dateTo);
+        if (!available) {
+            toast('Эти даты уже забронированы - выберите другие', 'error');
+            return;
+        }
+
         try {
             await request(`${API}/bookings/`, 'POST', {
                 listing: listingId,
@@ -200,8 +311,7 @@
             });
             toast('Бронирование создано! Ожидайте подтверждения.', 'success');
         } catch(e) {
-            const msg = e.non_field_errors?.[0] || e.detail || 'Ошибка при бронировании';
-            toast(msg, 'error');
+            toast(extractErrorMessage(e, 'Ошибка при бронировании'), 'error');
         }
     }
 

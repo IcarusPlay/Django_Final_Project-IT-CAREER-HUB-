@@ -28,11 +28,13 @@ class ListingDetailView(APIView):
     permission_classes = [IsAuthenticatedOrReadOnly]
 
     def get(self, request, pk):
-        user = request.user if request.user.is_authenticated else None
-        listing = ListingService.get_by_id(pk, user)
+        # это единственное место, где реально нужно засчитывать просмотр -
+        # человек открыл страницу объявления
+        listing = ListingService.get_by_id_and_track_view(pk, request)
         return Response(ListingSerializer(listing).data)
 
     def put(self, request, pk):
+        # редактирование - НЕ просмотр, счётчик трогать не нужно
         listing = ListingService.get_by_id(pk)
         serializer = ListingCreateSerializer(listing, data=request.data)
         if serializer.is_valid():
@@ -85,3 +87,10 @@ class SearchHistoryView(APIView):
         history = ListingService.get_search_history(request.user)
         data = [{'keyword': h.keyword, 'searched_at': h.searched_at} for h in history]
         return Response(data)
+
+
+class ListingCitiesView(APIView):
+    # список всех городов, в которых есть объявления - используется для
+    # выпадающего списка на фронтенде, чтобы новый город от арендодателя сразу там появлялся
+    def get(self, request):
+        return Response(ListingService.get_cities())

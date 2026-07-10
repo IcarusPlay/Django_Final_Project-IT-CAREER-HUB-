@@ -1,3 +1,4 @@
+from datetime import date
 from rest_framework import serializers
 from apps.listings.models import Listing
 from apps.users.serializers import UserSerializer
@@ -5,6 +6,9 @@ from apps.users.serializers import UserSerializer
 
 class ListingSerializer(serializers.ModelSerializer):
     owner = UserSerializer(read_only=True)
+    # есть ли уже подтверждённое бронирование (текущее или предстоящее) -
+    # используется чтобы показать бейдж "Забронировано" на фронтенде
+    is_booked = serializers.SerializerMethodField()
 
     class Meta:
         model = Listing
@@ -12,9 +16,19 @@ class ListingSerializer(serializers.ModelSerializer):
             'id', 'owner', 'title', 'description',
             'city', 'district', 'address',
             'property_type', 'rooms', 'price_per_night',
-            'status', 'created_at', 'updated_at',
+            'status', 'image', 'views_count', 'is_booked',
+            'created_at', 'updated_at',
         ]
-        read_only_fields = ['id', 'owner', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'owner', 'views_count', 'is_booked', 'created_at', 'updated_at']
+
+    def get_is_booked(self, obj):
+        today = date.today()
+        # считаем занятым если есть подтверждённая бронь, которая ещё не закончилась
+        # (то есть уже идёт сейчас или начнётся в будущем)
+        return obj.bookings.filter(
+            status='confirmed',
+            date_to__gte=today,
+        ).exists()
 
 
 class ListingCreateSerializer(serializers.ModelSerializer):
@@ -23,7 +37,7 @@ class ListingCreateSerializer(serializers.ModelSerializer):
         fields = [
             'title', 'description',
             'city', 'district', 'address',
-            'property_type', 'rooms', 'price_per_night',
+            'property_type', 'rooms', 'price_per_night', 'image',
         ]
 
     def validate_price_per_night(self, value):

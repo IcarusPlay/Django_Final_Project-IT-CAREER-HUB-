@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Мои объявления - Livento</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+
+<nav>
+    <a href="/" class="nav-logo">🏠 Livento</a>
+    <div class="nav-links" id="nav-links"></div>
+</nav>
+
+<div class="container">
+    <h2 class="section-title">Мои объявления</h2>
+    <div id="my-listings-grid" class="listings-grid">
+        <div class="loading">Загружаем ваши объявления...</div>
+    </div>
+</div>
+
+<div id="toast" class="toast"></div>
+
+<script src="/static/js/main.js"></script>
+<script>
+    const user = getUser();
+    if (!user) { location.href = '/auth/'; }
+    if (user && user.role !== 'landlord') {
+        toast('Эта страница только для арендодателей', 'error');
+        setTimeout(() => location.href = '/', 1500);
+    }
+    updateNav();
+
+    loadMyListings();
+
+    async function loadMyListings() {
+        const grid = document.getElementById('my-listings-grid');
+        grid.innerHTML = '<div class="loading">Загружаем ваши объявления...</div>';
+
+        try {
+            const data = await request(`${API}/listings/my/`);
+            const listings = data.results || data;
+
+            if (!listings.length) {
+                grid.innerHTML = `
+                    <div class="empty" style="grid-column: 1/-1">
+                        <div class="empty-icon">🏚️</div>
+                        <p>У вас пока нет объявлений</p>
+                        <a href="/listings/create/" class="btn btn-primary" style="margin-top:16px">Создать объявление</a>
+                    </div>`;
+                return;
+            }
+
+            grid.innerHTML = listings.map(l => `
+                <div class="listing-card" style="cursor:default;">
+                    <a href="/listing/?id=${l.id}" style="text-decoration:none; color:inherit;">
+                        <div class="listing-card-img">${listingImageHtml(l)}</div>
+                        <div class="listing-card-body">
+                            <div class="listing-card-title">${l.title}</div>
+                            <div class="listing-card-location">
+                                <span>📍</span>${l.city}${l.district ? ', ' + l.district : ''}
+                            </div>
+                            <div class="listing-card-footer">
+                                <div class="listing-card-price">€${l.price_per_night} <span>/ ночь</span></div>
+                                <span class="badge" style="background:${l.status === 'active' ? '#27ae6022' : '#95a5a622'}; color:${l.status === 'active' ? '#27ae60' : '#95a5a6'};">
+                                    ${l.status === 'active' ? 'Активно' : 'Скрыто'}
+                                </span>
+                            </div>
+                        </div>
+                    </a>
+                    <div style="padding:0 16px 16px; display:flex; gap:8px;">
+                        <button class="btn btn-secondary" style="flex:1; font-size:13px;" onclick="toggleListing(${l.id})">
+                            ${l.status === 'active' ? 'Скрыть' : 'Показать'}
+                        </button>
+                        <button class="btn btn-secondary" style="flex:1; font-size:13px; color:#e74c3c;" onclick="deleteListing(${l.id})">
+                            Удалить
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+
+        } catch(e) {
+            grid.innerHTML = '<div class="empty" style="grid-column:1/-1"><div class="empty-icon">⚠️</div><p>Не удалось загрузить объявления</p></div>';
+        }
+    }
+
+    async function toggleListing(id) {
+        try {
+            await request(`${API}/listings/${id}/toggle/`, 'POST');
+            toast('Статус обновлён', 'success');
+            loadMyListings();
+        } catch(e) {
+            toast(e.detail || 'Ошибка', 'error');
+        }
+    }
+
+    async function deleteListing(id) {
+        if (!confirm('Удалить объявление? Это действие нельзя отменить.')) return;
+        try {
+            await request(`${API}/listings/${id}/`, 'DELETE');
+            toast('Объявление удалено', 'success');
+            loadMyListings();
+        } catch(e) {
+            toast(e.detail || 'Ошибка', 'error');
+        }
+    }
+</script>
+</body>
+</html>
