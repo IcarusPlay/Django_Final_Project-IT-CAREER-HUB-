@@ -10,3 +10,5 @@ logs/
 .idea/
 .DS_Store
 media/listings
+media/*
+!media/.gitkeep
