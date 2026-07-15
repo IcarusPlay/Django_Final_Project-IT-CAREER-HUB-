@@ -12,7 +12,10 @@ class BookingListCreateView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        # арендатор видит свои бронирования, арендодатель - входящие заявки на свои объявления
+        # Один и тот же эндпоинт GET /api/bookings/ ведёт себя ПО-РАЗНОМУ в зависимости
+        # от роли пользователя - это сделано специально, чтобы у фронтенда была одна
+        # универсальная "точка входа" для страницы бронирований, а какие именно данные
+        # показать (свои брони или входящие заявки) - решает бэкенд по роли текущего юзера.
         if request.user.is_landlord():
             bookings = BookingService.get_incoming_bookings(request.user)
         else:
@@ -39,6 +42,9 @@ class BookingCancelView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request, pk):
+        # Проверка "а имеет ли ПРАВО именно этот пользователь отменить именно эту бронь"
+        # происходит внутри BookingService.cancel(), а не здесь - вьюха просто передаёт
+        # управление дальше
         booking = BookingService.get_by_id(pk)
         updated = BookingService.cancel(booking, request.user)
         return Response(BookingSerializer(updated).data)
@@ -63,7 +69,7 @@ class BookingRejectView(APIView):
 
 
 class BookingIncomingCountView(APIView):
-    # арендодатель: сколько заявок ожидают решения
+    # Для бейджа-циферки над "Заявки на аренду" в навбаре арендодателя
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
@@ -72,7 +78,8 @@ class BookingIncomingCountView(APIView):
 
 
 class BookingNotificationsCountView(APIView):
-    # арендатор: сколько НЕПРОСМОТРЕННЫХ изменений статуса (подтверждено/отклонено)
+    # Для бейджа-циферки над "Мои бронирования" в навбаре арендатора -
+    # сколько заявок изменили статус (подтверждено/отклонено), а он ещё не видел
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
@@ -80,14 +87,18 @@ class BookingNotificationsCountView(APIView):
         return Response({'count': count})
 
     def post(self, request):
-        # отмечаем все уведомления как просмотренные
+        # Один и тот же URL обслуживает и GET (узнать количество), и POST
+        # (отметить как просмотренные) - логично сгруппированы в одном классе,
+        # так как оба действия касаются одной и той же концепции "уведомления"
         BookingService.mark_notifications_seen(request.user)
         return Response({'detail': 'ok'})
 
 
 class ListingBookedRangesView(APIView):
-    # публичный эндпоинт - занятые даты объявления, чтобы фронтенд мог
-    # предупредить пользователя ДО отправки заявки на бронирование
+    # Нет permission_classes - используется дефолтная настройка (доступно всем),
+    # намеренно публичный эндпоинт: даже неавторизованный посетитель, который ещё
+    # не решил регистрироваться, должен видеть какие даты уже заняты, просматривая
+    # объявление
     def get(self, request, listing_id):
         listing = ListingService.get_by_id(listing_id)
         ranges = BookingService.get_booked_ranges(listing)
