@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Настройки аккаунта - Livento</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+
+<nav>
+    <a href="/" class="nav-logo">🏠 Livento</a>
+    <div class="nav-links" id="nav-links"></div>
+</nav>
+
+<div class="container" style="max-width: 500px;">
+    <a href="/" class="back-link">← На главную</a>
+
+    <div class="auth-card">
+        <h2>Настройки аккаунта</h2>
+        <p id="account-email" style="color:#888; margin-bottom:24px;"></p>
+
+        <h3 style="font-size:16px; margin-bottom:14px;">Сменить пароль</h3>
+
+        <div class="form-group">
+            <label>Текущий пароль</label>
+            <input type="password" id="old-password" placeholder="••••••••">
+        </div>
+        <div class="form-group">
+            <label>Новый пароль</label>
+            <input type="password" id="new-password" placeholder="Минимум 8 символов">
+        </div>
+        <button class="btn btn-primary" style="width:100%; padding:12px" onclick="changePassword()">
+            Сменить пароль
+        </button>
+    </div>
+</div>
+
+<div id="toast" class="toast"></div>
+
+<script src="/static/js/main.js"></script>
+<script>
+    const user = getUser();
+    if (!user) { location.href = '/auth/'; }
+    updateNav();
+
+    document.getElementById('account-email').textContent = user ? user.email : '';
+
+    async function changePassword() {
+        const oldPassword = document.getElementById('old-password').value;
+        const newPassword = document.getElementById('new-password').value;
+
+        if (!oldPassword || !newPassword) {
+            toast('Заполните оба поля', 'error');
+            return;
+        }
+
+        try {
+            await request(`${API}/auth/change-password/`, 'POST', {
+                old_password: oldPassword,
+                new_password: newPassword,
+            });
+            toast('Пароль успешно изменён', 'success');
+            document.getElementById('old-password').value = '';
+            document.getElementById('new-password').value = '';
+        } catch(e) {
+            toast(extractErrorMessage(e, 'Не удалось сменить пароль'), 'error');
+        }
+    }
+
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') changePassword();
+    });
+</script>
+</body>
+</html>

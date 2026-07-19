@@ -26,6 +26,8 @@ urlpatterns = [
     path('listings/my/', TemplateView.as_view(template_name='my_listings.html'), name='my-listings'),
     path('listing/', TemplateView.as_view(template_name='listing.html'), name='listing'),
     path('auth/', TemplateView.as_view(template_name='auth.html'), name='auth'),
+    path('reset-password/', TemplateView.as_view(template_name='reset_password.html'), name='reset-password'),
+    path('account/', TemplateView.as_view(template_name='account.html'), name='account'),
     path('bookings/', TemplateView.as_view(template_name='bookings.html'), name='bookings'),
 ]
 

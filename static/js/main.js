@@ -95,6 +95,7 @@ function updateNav() {
                 <div class="user-dropdown" id="user-dropdown">
                     <a href="#" style="cursor:default; color:#888;">${user.email}</a>
                     <hr>
+                    <a href="/account/">Настройки аккаунта</a>
                     <a href="#" onclick="logout()">Выйти</a>
                 </div>
             </div>
