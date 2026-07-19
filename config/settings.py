@@ -17,6 +17,15 @@ SECRET_KEY = env.str('SECRET_KEY')
 DEBUG = env.bool('DEBUG')
 ALLOWED_HOSTS = env.list('ALLOWED_HOSTS')  # список доменов/IP, с которых разрешено обращаться к серверу
 
+# CSRF_TRUSTED_ORIGINS - список источников (с протоколом!), с которых Django принимает
+# небезопасные запросы (POST/PUT/DELETE) при сессионной аутентификации. Без этого при
+# деплое на реальный сервер (например AWS EC2 по IP или домену) регистрация/логин и
+# другие POST-запросы будут падать с ошибкой CSRF verification failed, даже если
+# ALLOWED_HOSTS настроен правильно - это два РАЗНЫХ механизма защиты Django.
+# CSRF_TRUSTED_ORIGINS_LIST в .env - необязательная переменная, по умолчанию пустой список
+# (для локальной разработки не нужна, нужна только при деплое на реальный домен/IP)
+CSRF_TRUSTED_ORIGINS = env.list('CSRF_TRUSTED_ORIGINS', default=[])
+
 
 INSTALLED_APPS = [
     # стандартные встроенные приложения Django

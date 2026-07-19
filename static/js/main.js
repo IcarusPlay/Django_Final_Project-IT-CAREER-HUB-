@@ -1,5 +1,5 @@
-const API = 'api';
-const MEDIA_BASE = 'api';
+const API = '/api';
+const MEDIA_BASE = '';
 
 function getCookie(name) {
     const value = `; ${document.cookie}`;
