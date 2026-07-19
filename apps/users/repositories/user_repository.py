@@ -19,3 +19,10 @@ class UserRepository:
             phone=phone,
             role=role,
         )
+
+    @staticmethod
+    def set_password(user, new_password):
+        # set_password() хеширует пароль перед сохранением (не хранит открытым текстом)
+        user.set_password(new_password)
+        user.save()
+        return user

@@ -1,5 +1,5 @@
-const API = '/api';
-const MEDIA_BASE = '';
+const API = 'http://127.0.0.1:8000/api';
+const MEDIA_BASE = 'http://127.0.0.1:8000';
 
 function getCookie(name) {
     const value = `; ${document.cookie}`;
